@@ -1,4 +1,5 @@
 #![allow(deprecated)] // for deprecated protocol methods
+#![cfg(feature = "macros")]
 
 use pyo3::class::{
     PyAsyncProtocol, PyContextProtocol, PyDescrProtocol, PyIterProtocol, PyMappingProtocol,

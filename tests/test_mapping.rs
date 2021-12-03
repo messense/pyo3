@@ -1,5 +1,6 @@
 #![allow(deprecated)] // for deprecated protocol methods
 #![allow(clippy::needless_option_as_deref)]
+#![cfg(feature = "macros")]
 
 use std::collections::HashMap;
 

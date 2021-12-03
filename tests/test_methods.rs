@@ -1,4 +1,6 @@
 #![allow(clippy::needless_option_as_deref)]
+#![cfg(feature = "macros")]
+
 use pyo3::prelude::*;
 use pyo3::py_run;
 use pyo3::types::{IntoPyDict, PyDict, PyList, PySet, PyString, PyTuple, PyType};
