@@ -26,9 +26,9 @@ jobs:
           profile: minimal
           components: rustfmt
       - name: Check python formatting (black)
-        run: black --check .
+        run: make fmt_py
       - name: Check rust formatting (rustfmt)
-        run: cargo fmt --all -- --check
+        run: make fmt_rust
 
   clippy:
     runs-on: ubuntu-latest
