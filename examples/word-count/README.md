@@ -35,8 +35,8 @@ pytest -v tests
 
 ## Testing
 
-To test install tox globally and run
+To test install nox globally and run
 
 ```shell
-tox -e py
+nox
 ```
