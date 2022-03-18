@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - rm-ci-rm
   pull_request:
 
 concurrency:
