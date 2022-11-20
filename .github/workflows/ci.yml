@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - debug-ci
   pull_request:
   workflow_dispatch:
 
@@ -245,6 +246,10 @@ jobs:
           nox -s test-py
         env:
           CARGO_TARGET_DIR: ${{ github.workspace }}/target
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: failure()
 
       - name: Test cross compilation
         if: ${{ matrix.platform.os == 'ubuntu-latest' && matrix.python-version == '3.9' }}
