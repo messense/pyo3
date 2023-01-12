@@ -407,6 +407,13 @@ def check_changelog(session: nox.Session):
 
 @nox.session(name="set-minimal-package-versions")
 def set_minimal_package_versions(session: nox.Session):
+    from collections import defaultdict
+
+    try:
+        import tomllib as toml
+    except ImportError:
+        import toml
+
     projects = (
         None,
         "examples/decorator",
@@ -414,6 +421,22 @@ def set_minimal_package_versions(session: nox.Session):
         "examples/setuptools-rust-starter",
         "examples/word-count",
     )
+    min_pkg_versions = {
+        "indexmap": "1.6.2",
+        "hashbrown": "0.9.1",
+        "plotters": "0.3.1",
+        "plotters-svg": "0.3.1",
+        "plotters-backend": "0.3.2",
+        "bumpalo": "3.10.0",
+        "once_cell": "1.14.0",
+        "rayon": "1.5.3",
+        "rayon-core": "1.9.3",
+        # string_cache 0.8.4 depends on parking_lot 0.12
+        "string_cache": "0.8.3",
+        # 1.15.0 depends on hermit-abi 0.2.6 which has edition 2021 and breaks 1.48.0
+        "num_cpus": "1.14.0",
+        "parking_lot": "0.11.0",
+    }
 
     # run cargo update first to ensure that everything is at highest
     # possible version, so that this matches what CI will resolve to.
@@ -429,44 +452,27 @@ def set_minimal_package_versions(session: nox.Session):
                 external=True,
             )
 
-    _run_cargo_set_package_version(session, "indexmap", "1.6.2")
-    _run_cargo_set_package_version(session, "hashbrown:0.13.1", "0.9.1")
-    _run_cargo_set_package_version(session, "plotters", "0.3.1")
-    _run_cargo_set_package_version(session, "plotters-svg", "0.3.1")
-    _run_cargo_set_package_version(session, "plotters-backend", "0.3.2")
-    _run_cargo_set_package_version(session, "bumpalo", "3.10.0")
-    _run_cargo_set_package_version(session, "once_cell", "1.14.0")
-    _run_cargo_set_package_version(session, "rayon", "1.5.3")
-    _run_cargo_set_package_version(session, "rayon-core", "1.9.3")
-
-    # string_cache 0.8.4 depends on parking_lot 0.12
-    _run_cargo_set_package_version(session, "string_cache:0.8.4", "0.8.3")
-
-    # 1.15.0 depends on hermit-abi 0.2.6 which has edition 2021 and breaks 1.48.0
-    _run_cargo_set_package_version(session, "num_cpus", "1.14.0")
-    _run_cargo_set_package_version(
-        session, "num_cpus", "1.14.0", project="examples/word-count"
-    )
-
-    projects = (
-        None,
-        "examples/decorator",
-        "examples/maturin-starter",
-        "examples/setuptools-rust-starter",
-        "examples/word-count",
-    )
     for project in projects:
-        _run_cargo_set_package_version(
-            session, "parking_lot:0.12.1", "0.11.0", project=project
-        )
-        _run_cargo_set_package_version(session, "once_cell", "1.14.0", project=project)
+        lock_file = "Cargo.lock"
+        if project:
+            lock_file = os.path.join(project, "Cargo.lock")
 
-    _run_cargo_set_package_version(
-        session, "rayon", "1.5.3", project="examples/word-count"
-    )
-    _run_cargo_set_package_version(
-        session, "rayon-core", "1.9.3", project="examples/word-count"
-    )
+        cargo_lock = toml.load(lock_file)
+        pkg_versions = defaultdict(list)
+        for pkg in cargo_lock["package"]:
+            name = pkg["name"]
+            if name not in min_pkg_versions:
+                continue
+            pkg_versions[name].append(pkg["version"])
+
+        for (pkg_name, min_version) in min_pkg_versions.items():
+            versions = pkg_versions.get(pkg_name)
+            if not versions:
+                continue
+            for version in versions:
+                if version != min_version:
+                    pkg_id = pkg_name + ":" + version
+                    _run_cargo_set_package_version(session, pkg_id, min_version)
 
     # As a smoke test, cargo metadata solves all dependencies, so
     # will break if any crates rely on cargo features not
@@ -595,12 +601,12 @@ def _run_cargo_publish(session: nox.Session, *, package: str) -> None:
 
 def _run_cargo_set_package_version(
     session: nox.Session,
-    package: str,
+    pkg_id: str,
     version: str,
     *,
     project: Optional[str] = None,
 ) -> None:
-    command = ["cargo", "update", "-p", package, "--precise", version]
+    command = ["cargo", "update", "-p", pkg_id, "--precise", version]
     if project:
         command.append(f"--manifest-path={project}/Cargo.toml")
     _run(session, *command, external=True)
