@@ -473,6 +473,25 @@ print("gil_disabled", get_config_var("Py_GIL_DISABLED"))
             // TODO: abi3 is a property of the build mode, not the interpreter. Should this be
             // removed from `InterpreterConfig`?
             config.abi3 |= is_abi3();
+
+            // Compute lib_name from the *original* interpreter version before abi3
+            // fixup, because the link library must match the actual installed Python
+            // (e.g. libpython3.14.so), not the abi3 minimum (e.g. libpython3.7.so).
+            // See https://github.com/PyO3/pyo3/issues/5960
+            if config.lib_name.is_none() {
+                if let Ok(Ok(target)) =
+                    env::var("TARGET").map(|target| target.parse::<Triple>())
+                {
+                    config.lib_name = Some(default_lib_name_for_target(
+                        config.version,
+                        config.implementation,
+                        config.abi3,
+                        config.is_free_threaded(),
+                        &target,
+                    ));
+                }
+            }
+
             config.fixup_for_abi3_version(get_abi3_version())?;
 
             Ok(config)
